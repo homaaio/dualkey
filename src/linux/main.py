@@ -8,7 +8,7 @@ from joystick_reader import JoystickReader
 from keyboard_emulator import KeyboardEmulator
 from joystick_hider import JoystickHider
 from web_server import start_web_server
-from gui import ReJoyGUI
+from gui import DualKeyGUI
 
 DEFAULT_BINDINGS = {
     'left_stick_up': 'w',
@@ -34,7 +34,7 @@ DEFAULT_BINDINGS = {
     'ps_button': 'esc',
 }
 
-class ReJoyLinux:
+class DualKeyLinux:
     def __init__(self):
         self.bindings = DEFAULT_BINDINGS.copy()
         self.emulation_enabled = False
@@ -113,14 +113,14 @@ class ReJoyLinux:
                 self.emulator.release(action, self.bindings)
     
     def run(self):
-        print("ReJoy Linux starting...")
+        print("DualKey Linux starting...")
         print("GUI opened in separate window")
         print("Web interface: http://localhost:8080")
         
         web_thread = threading.Thread(target=start_web_server, args=(self,), daemon=True)
         web_thread.start()
         
-        gui = ReJoyGUI(self)
+        gui = DualKeyGUI(self)
         
         def update_loop():
             while self.running:
@@ -140,5 +140,5 @@ class ReJoyLinux:
             self.running = False
 
 if __name__ == '__main__':
-    app = ReJoyLinux()
+    app = DualKeyLinux()
     app.run()

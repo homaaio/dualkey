@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-namespace ReJoy
+namespace DualKey
 {
     public class JoystickEmulator
     {

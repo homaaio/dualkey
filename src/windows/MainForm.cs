@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
-namespace ReJoy
+namespace DualKey
 {
     public partial class MainForm : Form
     {

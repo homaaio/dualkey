@@ -3,12 +3,12 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 
-class ReJoyGUI:
+class DualKeyGUI:
     def __init__(self, app):
         self.app = app
         
         self.root = tk.Tk()
-        self.root.title("ReJoy - DualShock 3 Emulator")
+        self.root.title("DualKey - DualShock 3 Emulator")
         self.root.geometry("800x600")
         self.root.configure(bg="#121224")
         self.root.resizable(False, False)

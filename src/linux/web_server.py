@@ -62,7 +62,7 @@ class ReJoyHandler(http.server.SimpleHTTPRequestHandler):
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>ReJoy Linux Tester</title>
+    <title>DualKey Linux Tester</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         body{background:#121224;color:#fff;font-family:Segoe UI,Arial;min-height:100vh;padding:20px}
@@ -82,7 +82,7 @@ class ReJoyHandler(http.server.SimpleHTTPRequestHandler):
 </head>
 <body>
     <div class="container">
-        <h1>ReJoy Linux Tester</h1>
+        <h1>DualKey Linux Tester</h1>
         <div class="status" id="status">Searching for DualShock 3...</div>
         <div class="sticks">
             <div class="stick-wrapper">
@@ -121,7 +121,7 @@ class ReJoyHandler(http.server.SimpleHTTPRequestHandler):
 </html>'''
 
 def start_web_server(app):
-    ReJoyHandler.app = app
+    DualKeyHandler.app = app
     
-    with socketserver.TCPServer(('', 8080), ReJoyHandler) as httpd:
+    with socketserver.TCPServer(('', 8080), DualKeyHandler) as httpd:
         httpd.serve_forever()
