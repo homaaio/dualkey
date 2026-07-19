@@ -1,4 +1,4 @@
-# ReJoy - DualShock 3 to Keyboard Emulator for Windows
+# DualKey - DualShock 3 to Keyboard Emulator for Windows
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-blue)](https://dotnet.microsoft.com/)
@@ -36,7 +36,7 @@ After launching:
 ### Testing the Controller
 
 1. Connect your DualShock 3
-2. Launch ReJoy
+2. Launch DualKey
 3. Move the sticks to see visualization
 4. Press buttons to see their state
 
@@ -84,11 +84,11 @@ After launching:
 
 ## Project Structure
 
-ReJoy/
+DualKey/
 ├── icons/              # Application icons
 │   └── app.ico
 ├── src/                # Source code
-│   ├── ReJoy.csproj    # Project file
+│   ├── DualKey.csproj    # Project file
 │   ├── Program.cs      # Entry point
 │   ├── MainForm.cs     # Main GUI window
 │   ├── JoystickEmulator.cs  # Keyboard emulation
@@ -129,7 +129,7 @@ ReJoy/
 - Some applications may require the window to be in focus
 
 **Cannot hide controller:**
-- Run ReJoy as Administrator
+- Run DualKey as Administrator
 - Check if PowerShell execution policy allows scripts
 - Manually disable the device in Device Manager
 
@@ -140,8 +140,8 @@ ReJoy/
 
 ## Building from Source
 
-git clone https://github.com/yourusername/ReJoy.git
-cd ReJoy
+git clone https://github.com/yourusername/DualKey.git
+cd DualKey
 build.bat
 
 The compiled executable will be located in the build directory.
