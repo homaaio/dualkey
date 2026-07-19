@@ -1,3 +1,4 @@
+# src/linux/keyboard_emulator.py
 import uinput
 
 class KeyboardEmulator:
@@ -18,20 +19,32 @@ class KeyboardEmulator:
             )
             self.device = uinput.Device(events)
         except:
-            print('Warning: uinput not available. Keyboard emulation disabled.')
+            print("Warning: uinput not available. Run install.sh first.")
             self.device = None
     
     def _get_key_code(self, key):
         key_map = {
-            'w': uinput.KEY_W, 'a': uinput.KEY_A, 's': uinput.KEY_S, 'd': uinput.KEY_D,
-            'up': uinput.KEY_UP, 'down': uinput.KEY_DOWN,
-            'left': uinput.KEY_LEFT, 'right': uinput.KEY_RIGHT,
-            'space': uinput.KEY_SPACE, 'e': uinput.KEY_E,
-            'q': uinput.KEY_Q, 'r': uinput.KEY_R,
-            'shift': uinput.KEY_LEFTSHIFT, 'ctrl': uinput.KEY_LEFTCTRL,
-            '1': uinput.KEY_1, '2': uinput.KEY_2,
-            'f': uinput.KEY_F, 'g': uinput.KEY_G,
-            'tab': uinput.KEY_TAB, 'enter': uinput.KEY_ENTER, 'esc': uinput.KEY_ESC,
+            'w': uinput.KEY_W,
+            'a': uinput.KEY_A,
+            's': uinput.KEY_S,
+            'd': uinput.KEY_D,
+            'up': uinput.KEY_UP,
+            'down': uinput.KEY_DOWN,
+            'left': uinput.KEY_LEFT,
+            'right': uinput.KEY_RIGHT,
+            'space': uinput.KEY_SPACE,
+            'e': uinput.KEY_E,
+            'q': uinput.KEY_Q,
+            'r': uinput.KEY_R,
+            'shift': uinput.KEY_LEFTSHIFT,
+            'ctrl': uinput.KEY_LEFTCTRL,
+            '1': uinput.KEY_1,
+            '2': uinput.KEY_2,
+            'f': uinput.KEY_F,
+            'g': uinput.KEY_G,
+            'tab': uinput.KEY_TAB,
+            'enter': uinput.KEY_ENTER,
+            'esc': uinput.KEY_ESC,
         }
         return key_map.get(key)
     
