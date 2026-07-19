@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace ReJoy
+namespace DualKey
 {
     internal static class Program
     {
