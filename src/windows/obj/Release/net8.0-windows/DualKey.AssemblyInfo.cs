@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DualKey")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e2a5171b19bb4dd92cfbd505b1a44158cb5342b1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b4ebee35303951978d66b97624dadb1c48ca7798")]
 [assembly: System.Reflection.AssemblyProductAttribute("DualKey")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DualKey")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

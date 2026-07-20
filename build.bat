@@ -18,6 +18,11 @@ echo [INFO] .NET SDK found:
 dotnet --version
 echo.
 
+:: Terminate any running DualKey instance
+echo [INFO] Closing existing DualKey processes...
+taskkill /f /im DualKey.exe >nul 2>&1
+timeout /t 1 /nobreak >nul
+
 :: Build the project
 echo [INFO] Building DualKey...
 cd src\windows
