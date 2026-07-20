@@ -17,25 +17,39 @@ namespace DualKey
         private JoystickHider hider;
         private WebServer webServer;
         private Timer updateTimer;
+        private Timer indicatorTimer;
 
+        // UI элементы
         private MenuStrip menuStrip;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel statusLabel;
         private ToolStripStatusLabel connectionLabel;
-
         private Panel keyboardPanel;
         private KeyboardVisualizer keyboardView;
-
         private GroupBox groupEmulation;
         private CheckBox chkEmulation;
         private Label lblDeadzone;
         private TrackBar trackDeadzone;
         private Label lblDeadzoneValue;
-
         private GroupBox groupController;
         private Button btnHide;
         private Button btnWeb;
 
+        // Индикаторы игроков
+        private Panel playerIndicatorPanel;
+        private Label[] playerIndicators;
+        private int currentPlayer = 1;
+        private Dictionary<int, Dictionary<string, int>> playerBindings;
+
+        // Настройки индикаторов
+        private bool indicatorsEnabled = true;
+        private int indicatorMode = 0;
+        private int indicatorSpeed = 500;
+        private int indicatorStep = 0;
+        private bool indicatorBlinkState = false;
+        private Color[] indicatorColors = new Color[] { Color.Red, Color.Red, Color.Red, Color.Red };
+
+        // Состояние джойстика
         private float leftX, leftY, rightX, rightY;
         private bool connected;
         private HashSet<int> activeKeyCodes = new HashSet<int>();
@@ -46,6 +60,12 @@ namespace DualKey
         {
             emulator = new JoystickEmulator();
             hider = new JoystickHider();
+            playerBindings = new Dictionary<int, Dictionary<string, int>>();
+
+            for (int i = 1; i <= 4; i++)
+            {
+                playerBindings[i] = new Dictionary<string, int>(emulator.Bindings);
+            }
 
             Log("Application starting...");
 
@@ -64,6 +84,11 @@ namespace DualKey
             updateTimer.Interval = 16;
             updateTimer.Tick += UpdateJoystickState;
             updateTimer.Start();
+
+            indicatorTimer = new Timer();
+            indicatorTimer.Interval = indicatorSpeed;
+            indicatorTimer.Tick += UpdateIndicators;
+            indicatorTimer.Start();
         }
 
         private static void Log(string message)
@@ -76,7 +101,7 @@ namespace DualKey
         private void InitializeComponent()
         {
             this.Text = "DualKey";
-            this.Size = new Size(920, 620);
+            this.Size = new Size(920, 640);
             this.MinimumSize = new Size(800, 500);
             this.StartPosition = FormStartPosition.CenterScreen;
 
@@ -98,6 +123,9 @@ namespace DualKey
             this.MainMenuStrip = menuStrip;
             this.Controls.Add(menuStrip);
 
+            // Индикаторы игроков
+            CreatePlayerIndicators();
+
             // Статусная строка
             statusStrip = new StatusStrip();
             connectionLabel = new ToolStripStatusLabel("Not connected");
@@ -110,8 +138,8 @@ namespace DualKey
             // Панель клавиатуры
             keyboardPanel = new Panel
             {
-                Location = new Point(12, menuStrip.Bottom + 5),
-                Size = new Size(this.ClientSize.Width - 24, this.ClientSize.Height - menuStrip.Height - statusStrip.Height - 120),
+                Location = new Point(12, playerIndicatorPanel.Bottom + 5),
+                Size = new Size(this.ClientSize.Width - 24, this.ClientSize.Height - playerIndicatorPanel.Height - statusStrip.Height - 130),
                 BorderStyle = BorderStyle.FixedSingle,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
@@ -237,10 +265,154 @@ namespace DualKey
             this.Controls.Add(groupController);
         }
 
+        private void CreatePlayerIndicators()
+        {
+            playerIndicatorPanel = new Panel
+            {
+                Location = new Point(12, menuStrip.Bottom + 3),
+                Size = new Size(this.ClientSize.Width - 24, 30),
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+            };
+
+            Label lblPlayers = new Label
+            {
+                Text = "Player:",
+                Location = new Point(0, 5),
+                Size = new Size(45, 20)
+            };
+            playerIndicatorPanel.Controls.Add(lblPlayers);
+
+            playerIndicators = new Label[4];
+            for (int i = 0; i < 4; i++)
+            {
+                int player = i + 1;
+                Label indicator = new Label
+                {
+                    Text = player.ToString(),
+                    Location = new Point(50 + i * 35, 3),
+                    Size = new Size(28, 24),
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    BorderStyle = BorderStyle.FixedSingle,
+                    BackColor = (player == currentPlayer) ? Color.LimeGreen : indicatorColors[i],
+                    ForeColor = Color.White,
+                    Cursor = Cursors.Hand,
+                    Tag = player
+                };
+                indicator.Click += (s, e) =>
+                {
+                    Label clicked = (Label)s;
+                    int playerNum = (int)clicked.Tag;
+                    SwitchPlayer(playerNum);
+                };
+                playerIndicators[i] = indicator;
+                playerIndicatorPanel.Controls.Add(indicator);
+            }
+
+            this.Controls.Add(playerIndicatorPanel);
+        }
+
+        private void SwitchPlayer(int player)
+        {
+            currentPlayer = player;
+
+            for (int i = 0; i < 4; i++)
+            {
+                if (i + 1 == player)
+                {
+                    playerIndicators[i].BackColor = Color.LimeGreen;
+                    playerIndicators[i].ForeColor = Color.Black;
+                }
+                else
+                {
+                    playerIndicators[i].BackColor = indicatorColors[i];
+                    playerIndicators[i].ForeColor = Color.White;
+                }
+            }
+
+            if (playerBindings.ContainsKey(player))
+            {
+                emulator.Bindings = new Dictionary<string, int>(playerBindings[player]);
+            }
+
+            Log($"Switched to player {player}");
+        }
+
+        private void UpdateIndicators(object sender, EventArgs e)
+        {
+            if (!indicatorsEnabled)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    if (i + 1 != currentPlayer)
+                        playerIndicators[i].BackColor = Color.DarkGray;
+                }
+                return;
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                if (i + 1 == currentPlayer) continue;
+            }
+
+            switch (indicatorMode)
+            {
+                case 0: // Static
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (i + 1 != currentPlayer)
+                            playerIndicators[i].BackColor = indicatorColors[i];
+                    }
+                    break;
+
+                case 1: // Blink All
+                    indicatorBlinkState = !indicatorBlinkState;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (i + 1 != currentPlayer)
+                            playerIndicators[i].BackColor = indicatorBlinkState ? indicatorColors[i] : Color.DarkGray;
+                    }
+                    break;
+
+                case 2: // Running Light
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (i + 1 != currentPlayer)
+                            playerIndicators[i].BackColor = (i == indicatorStep) ? indicatorColors[i] : Color.DarkGray;
+                    }
+                    indicatorStep = (indicatorStep + 1) % 4;
+                    break;
+
+                case 3: // Alternating
+                    indicatorBlinkState = !indicatorBlinkState;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        if (i + 1 == currentPlayer) continue;
+                        if (i % 2 == 0)
+                            playerIndicators[i].BackColor = indicatorBlinkState ? indicatorColors[i] : Color.DarkGray;
+                        else
+                            playerIndicators[i].BackColor = !indicatorBlinkState ? indicatorColors[i] : Color.DarkGray;
+                    }
+                    break;
+            }
+        }
+
         private void UpdateJoystickState(object sender, EventArgs e)
         {
             try
             {
+                if (!controller.IsConnected)
+                {
+                    for (int i = 0; i < 4; i++)
+                    {
+                        var testController = new Controller((UserIndex)i);
+                        if (testController.IsConnected)
+                        {
+                            controller = testController;
+                            break;
+                        }
+                    }
+                }
+
                 if (!controller.IsConnected)
                 {
                     connected = false;
@@ -382,7 +554,12 @@ namespace DualKey
                 var config = new Dictionary<string, object>
                 {
                     ["deadzone"] = emulator.Deadzone,
-                    ["bindings"] = emulator.Bindings
+                    ["currentPlayer"] = currentPlayer,
+                    ["playerBindings"] = playerBindings,
+                    ["indicatorsEnabled"] = indicatorsEnabled,
+                    ["indicatorMode"] = indicatorMode,
+                    ["indicatorSpeed"] = indicatorSpeed,
+                    ["indicatorColors"] = new int[] { indicatorColors[0].ToArgb(), indicatorColors[1].ToArgb(), indicatorColors[2].ToArgb(), indicatorColors[3].ToArgb() }
                 };
                 string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(sfd.FileName, json);
@@ -401,20 +578,42 @@ namespace DualKey
                 try
                 {
                     string json = File.ReadAllText(ofd.FileName);
-                    var config = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+                    var config = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
                     if (config != null)
                     {
                         if (config.ContainsKey("deadzone"))
                         {
-                            float dz = float.Parse(config["deadzone"].ToString());
+                            float dz = config["deadzone"].GetSingle();
                             emulator.Deadzone = dz;
                             trackDeadzone.Value = (int)(dz * 50);
                             lblDeadzoneValue.Text = dz.ToString("F2");
                         }
-                        if (config.ContainsKey("bindings"))
+                        if (config.ContainsKey("currentPlayer"))
                         {
-                            var bindings = JsonSerializer.Deserialize<Dictionary<string, int>>(config["bindings"].ToString());
-                            if (bindings != null) emulator.Bindings = bindings;
+                            int player = config["currentPlayer"].GetInt32();
+                            SwitchPlayer(player);
+                        }
+                        if (config.ContainsKey("playerBindings"))
+                        {
+                            var bindingsJson = config["playerBindings"].GetRawText();
+                            playerBindings = JsonSerializer.Deserialize<Dictionary<int, Dictionary<string, int>>>(bindingsJson);
+                            if (playerBindings.ContainsKey(currentPlayer))
+                                emulator.Bindings = playerBindings[currentPlayer];
+                        }
+                        if (config.ContainsKey("indicatorsEnabled"))
+                            indicatorsEnabled = config["indicatorsEnabled"].GetBoolean();
+                        if (config.ContainsKey("indicatorMode"))
+                            indicatorMode = config["indicatorMode"].GetInt32();
+                        if (config.ContainsKey("indicatorSpeed"))
+                        {
+                            indicatorSpeed = config["indicatorSpeed"].GetInt32();
+                            indicatorTimer.Interval = indicatorSpeed;
+                        }
+                        if (config.ContainsKey("indicatorColors"))
+                        {
+                            var colors = config["indicatorColors"].Deserialize<int[]>();
+                            for (int i = 0; i < 4; i++)
+                                indicatorColors[i] = Color.FromArgb(colors[i]);
                         }
                         Log($"Loaded config from {ofd.FileName}");
                     }
@@ -430,7 +629,18 @@ namespace DualKey
         private void OnOpenSettings(object sender, EventArgs e)
         {
             using (var sf = new SettingsForm(emulator))
-                sf.ShowDialog(this);
+            {
+                if (sf.ShowDialog(this) == DialogResult.OK)
+                {
+                    playerBindings[currentPlayer] = new Dictionary<string, int>(emulator.Bindings);
+                    indicatorsEnabled = sf.IndicatorsEnabled;
+                    indicatorMode = sf.IndicatorMode;
+                    indicatorSpeed = sf.IndicatorSpeed;
+                    indicatorColors = sf.IndicatorColors;
+                    indicatorTimer.Interval = indicatorSpeed;
+                    Log("Settings updated.");
+                }
+            }
         }
 
         private void OnClearSettings(object sender, EventArgs e)
@@ -441,6 +651,15 @@ namespace DualKey
                 emulator.Deadzone = 0.3f;
                 trackDeadzone.Value = (int)(emulator.Deadzone * 50);
                 lblDeadzoneValue.Text = emulator.Deadzone.ToString("F2");
+                currentPlayer = 1;
+                SwitchPlayer(1);
+                for (int i = 1; i <= 4; i++)
+                    playerBindings[i] = new Dictionary<string, int>(emulator.Bindings);
+                indicatorsEnabled = true;
+                indicatorMode = 0;
+                indicatorSpeed = 500;
+                indicatorColors = new Color[] { Color.Red, Color.Red, Color.Red, Color.Red };
+                indicatorTimer.Interval = 500;
                 Log("Settings cleared.");
             }
         }
@@ -448,6 +667,7 @@ namespace DualKey
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             updateTimer?.Stop();
+            indicatorTimer?.Stop();
             emulator?.ReleaseAll();
             webServer?.Stop();
             Log("Application closed.");
@@ -460,7 +680,7 @@ namespace DualKey
         private HashSet<int> activeKeys = new HashSet<int>();
         private Dictionary<int, Rectangle> keyRects = new Dictionary<int, Rectangle>();
         private Dictionary<int, string> keyLabels = new Dictionary<int, string>();
-        private readonly Font keyFont = new Font("Segoe UI", 8, FontStyle.Bold);
+        private readonly Font keyFont = new Font("Microsoft Sans Serif", 8, FontStyle.Bold);
 
         public KeyboardVisualizer()
         {
