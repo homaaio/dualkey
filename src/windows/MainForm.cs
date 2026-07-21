@@ -105,12 +105,14 @@ namespace DualKey
             this.MinimumSize = new Size(800, 500);
             this.StartPosition = FormStartPosition.CenterScreen;
 
-            // Меню
+            // Menu
             menuStrip = new MenuStrip();
 
             ToolStripMenuItem fileMenu = new ToolStripMenuItem("File");
             fileMenu.DropDownItems.Add("Save configuration (.hrc)", null, OnSaveConfig);
             fileMenu.DropDownItems.Add("Import configuration (.hrc)", null, OnLoadConfig);
+            fileMenu.DropDownItems.Add(new ToolStripSeparator());
+            fileMenu.DropDownItems.Add("Open Log", null, OnOpenLog);  // <-- НОВЫЙ ПУНКТ
             fileMenu.DropDownItems.Add(new ToolStripSeparator());
             fileMenu.DropDownItems.Add("Exit", null, (s, e) => Application.Exit());
 
@@ -265,6 +267,33 @@ namespace DualKey
             groupController.Controls.Add(btnHide);
             groupController.Controls.Add(btnWeb);
             this.Controls.Add(groupController);
+        }
+
+        private void OnOpenLog(object sender, EventArgs e)
+        {
+            try
+            {
+                if (File.Exists(LogFile))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = LogFile,
+                        UseShellExecute = true
+                    });
+                    Log("Log opened.");
+                }
+                else
+                {
+                    MessageBox.Show("Log file not found yet. Run the application first to generate it.", "DualKey",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not open log file: {ex.Message}", "DualKey",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Log($"Error opening log: {ex.Message}");
+            }
         }
 
         private void CreatePlayerIndicators()
