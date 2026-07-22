@@ -6,7 +6,26 @@ namespace DualKey
 {
     public class JoystickHider
     {
+        // Kept so Program.cs can re-enable the controller even if the app crashes
+        // or is killed while it's hidden, instead of leaving it disabled in Device Manager.
+        private static JoystickHider activeInstance;
+
         public bool IsHidden { get; private set; } = false;
+
+        public JoystickHider()
+        {
+            activeInstance = this;
+        }
+
+        public static void EmergencyRestoreIfHidden()
+        {
+            try
+            {
+                if (activeInstance != null && activeInstance.IsHidden)
+                    activeInstance.ShowJoystick();
+            }
+            catch { /* best-effort only - the process may already be tearing down */ }
+        }
 
         public bool HideJoystick()
         {

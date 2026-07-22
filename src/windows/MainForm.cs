@@ -54,7 +54,22 @@ namespace DualKey
         private bool connected;
         private HashSet<int> activeKeyCodes = new HashSet<int>();
 
-        private static readonly string LogFile = "dualkey.log";
+        private static readonly string LogFile = GetLogFilePath();
+
+        private static string GetLogFilePath()
+        {
+            try
+            {
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DualKey");
+                Directory.CreateDirectory(dir);
+                return Path.Combine(dir, "dualkey.log");
+            }
+            catch
+            {
+                // Fall back to the working directory if LocalAppData is somehow unavailable.
+                return "dualkey.log";
+            }
+        }
 
         public MainForm()
         {
@@ -713,6 +728,13 @@ namespace DualKey
             indicatorTimer?.Stop();
             emulator?.ReleaseAll();
             webServer?.Stop();
+
+            if (hider != null && hider.IsHidden)
+            {
+                Log("Restoring hidden controller before exit...");
+                hider.ShowJoystick();
+            }
+
             Log("Application closed.");
             base.OnFormClosing(e);
         }
