@@ -7,12 +7,16 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using SharpDX.XInput;
+using DInput = SharpDX.DirectInput;
 
 namespace DualKey
 {
     public partial class MainForm : Form
     {
         private Controller controller;
+        private DInput.DirectInput directInput;
+        private DInput.Joystick directInputJoystick;
+        private int diDiscoveryCounter = 0;
         private JoystickEmulator emulator;
         private JoystickHider hider;
         private WebServer webServer;
@@ -71,8 +75,6 @@ namespace DualKey
                 return "dualkey.log";
             }
         }
-<<<<<<< HEAD
-=======
 
         private void ApplySavedGamepadBindings()
         {
@@ -91,7 +93,6 @@ namespace DualKey
             for (int i = 1; i <= 4; i++)
                 playerBindings[i] = new Dictionary<string, int>(emulator.Bindings);
         }
->>>>>>> 7c4fcbc (Changed MainForm.cs for new settings)
 
         public MainForm()
         {
@@ -499,24 +500,39 @@ namespace DualKey
             }
         }
 
+        private class PadState
+        {
+            public bool Connected;
+            public string Source = "";
+            public float LX, LY, RX, RY;
+            public HashSet<string> Pressed = new HashSet<string>();
+        }
+
+        private static readonly string[] ButtonActions = new string[]
+        {
+            "cross", "circle", "triangle", "square",
+            "l1", "r1", "l2", "r2", "l3", "r3",
+            "start", "select", "ps_button",
+        };
+
+        private static readonly string[] DpadActions = new string[]
+        {
+            "dpad_up", "dpad_down", "dpad_left", "dpad_right",
+        };
+
         private void UpdateJoystickState(object sender, EventArgs e)
         {
             try
             {
-                if (!controller.IsConnected)
-                {
-                    for (int i = 0; i < 4; i++)
-                    {
-                        var testController = new Controller((UserIndex)i);
-                        if (testController.IsConnected)
-                        {
-                            controller = testController;
-                            break;
-                        }
-                    }
-                }
+                // Try a real Xbox-compatible (XInput) controller first; if none is
+                // connected, fall back to DirectInput so a DualShock 4 (which Windows
+                // already recognizes as a plain HID gamepad, no extra driver needed)
+                // still works.
+                PadState pad = ReadXInputState();
+                if (!pad.Connected)
+                    pad = ReadDirectInputState();
 
-                if (!controller.IsConnected)
+                if (!pad.Connected)
                 {
                     connected = false;
                     connectionLabel.Text = "Not connected";
@@ -529,16 +545,13 @@ namespace DualKey
                 }
 
                 connected = true;
-                connectionLabel.Text = "Connected";
+                connectionLabel.Text = "Connected (" + pad.Source + ")";
                 connectionLabel.ForeColor = Color.Green;
 
-                State state = controller.GetState();
-                Gamepad gamepad = state.Gamepad;
-
-                leftX = gamepad.LeftThumbX / 32768f;
-                leftY = gamepad.LeftThumbY / 32768f;
-                rightX = gamepad.RightThumbX / 32768f;
-                rightY = gamepad.RightThumbY / 32768f;
+                leftX = pad.LX;
+                leftY = pad.LY;
+                rightX = pad.RX;
+                rightY = pad.RY;
 
                 float dz = emulator.Deadzone;
                 activeKeyCodes.Clear();
@@ -548,40 +561,16 @@ namespace DualKey
                 AddStickKeys("right_stick_left", "right_stick_right", rightX, dz);
                 AddStickKeys("right_stick_down", "right_stick_up", rightY, dz);
 
-                GamepadButtonFlags buttons = gamepad.Buttons;
-                var buttonMap = new (GamepadButtonFlags flag, string action)[]
+                foreach (var action in ButtonActions)
                 {
-                    (GamepadButtonFlags.A, "cross"),
-                    (GamepadButtonFlags.B, "circle"),
-                    (GamepadButtonFlags.X, "triangle"),
-                    (GamepadButtonFlags.Y, "square"),
-                    (GamepadButtonFlags.LeftShoulder, "l1"),
-                    (GamepadButtonFlags.RightShoulder, "r1"),
-                    (GamepadButtonFlags.LeftThumb, "l3"),
-                    (GamepadButtonFlags.RightThumb, "r3"),
-                    (GamepadButtonFlags.Start, "start"),
-                    (GamepadButtonFlags.Back, "select"),
-                };
-
-                foreach (var (flag, action) in buttonMap)
-                {
-                    if ((buttons & flag) != 0 && emulator.Bindings.ContainsKey(action))
+                    if (pad.Pressed.Contains(action) && emulator.Bindings.ContainsKey(action))
                         activeKeyCodes.Add(emulator.Bindings[action]);
                 }
-
-                if (gamepad.LeftTrigger > 128 && emulator.Bindings.ContainsKey("l2"))
-                    activeKeyCodes.Add(emulator.Bindings["l2"]);
-                if (gamepad.RightTrigger > 128 && emulator.Bindings.ContainsKey("r2"))
-                    activeKeyCodes.Add(emulator.Bindings["r2"]);
-
-                if ((buttons & GamepadButtonFlags.DPadUp) != 0 && emulator.Bindings.ContainsKey("dpad_up"))
-                    activeKeyCodes.Add(emulator.Bindings["dpad_up"]);
-                if ((buttons & GamepadButtonFlags.DPadDown) != 0 && emulator.Bindings.ContainsKey("dpad_down"))
-                    activeKeyCodes.Add(emulator.Bindings["dpad_down"]);
-                if ((buttons & GamepadButtonFlags.DPadLeft) != 0 && emulator.Bindings.ContainsKey("dpad_left"))
-                    activeKeyCodes.Add(emulator.Bindings["dpad_left"]);
-                if ((buttons & GamepadButtonFlags.DPadRight) != 0 && emulator.Bindings.ContainsKey("dpad_right"))
-                    activeKeyCodes.Add(emulator.Bindings["dpad_right"]);
+                foreach (var action in DpadActions)
+                {
+                    if (pad.Pressed.Contains(action) && emulator.Bindings.ContainsKey(action))
+                        activeKeyCodes.Add(emulator.Bindings[action]);
+                }
 
                 if (emulator.Enabled)
                 {
@@ -590,19 +579,16 @@ namespace DualKey
                     ProcessStickEmulation("right_stick_left", "right_stick_right", rightX, dz);
                     ProcessStickEmulation("right_stick_down", "right_stick_up", rightY, dz);
 
-                    foreach (var (flag, action) in buttonMap)
+                    foreach (var action in ButtonActions)
                     {
-                        if ((buttons & flag) != 0) emulator.PressKey(action);
+                        if (pad.Pressed.Contains(action)) emulator.PressKey(action);
                         else emulator.ReleaseKey(action);
                     }
-
-                    EmulateTrigger("l2", gamepad.LeftTrigger > 128);
-                    EmulateTrigger("r2", gamepad.RightTrigger > 128);
-
-                    EmulateDpad("dpad_up", (buttons & GamepadButtonFlags.DPadUp) != 0);
-                    EmulateDpad("dpad_down", (buttons & GamepadButtonFlags.DPadDown) != 0);
-                    EmulateDpad("dpad_left", (buttons & GamepadButtonFlags.DPadLeft) != 0);
-                    EmulateDpad("dpad_right", (buttons & GamepadButtonFlags.DPadRight) != 0);
+                    foreach (var action in DpadActions)
+                    {
+                        if (pad.Pressed.Contains(action)) emulator.PressKey(action);
+                        else emulator.ReleaseKey(action);
+                    }
                 }
 
                 keyboardView.SetActiveKeys(activeKeyCodes);
@@ -612,6 +598,179 @@ namespace DualKey
             {
                 Log($"Error: {ex.Message}");
                 connected = false;
+            }
+        }
+
+        private PadState ReadXInputState()
+        {
+            if (!controller.IsConnected)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    var testController = new Controller((UserIndex)i);
+                    if (testController.IsConnected)
+                    {
+                        controller = testController;
+                        break;
+                    }
+                }
+            }
+
+            if (!controller.IsConnected)
+                return new PadState { Connected = false };
+
+            State state = controller.GetState();
+            Gamepad gp = state.Gamepad;
+
+            var pad = new PadState { Connected = true, Source = "XInput" };
+            pad.LX = gp.LeftThumbX / 32768f;
+            pad.LY = gp.LeftThumbY / 32768f;
+            pad.RX = gp.RightThumbX / 32768f;
+            pad.RY = gp.RightThumbY / 32768f;
+
+            void AddIf(GamepadButtonFlags flag, string action)
+            {
+                if ((gp.Buttons & flag) != 0) pad.Pressed.Add(action);
+            }
+            AddIf(GamepadButtonFlags.A, "cross");
+            AddIf(GamepadButtonFlags.B, "circle");
+            AddIf(GamepadButtonFlags.X, "triangle");
+            AddIf(GamepadButtonFlags.Y, "square");
+            AddIf(GamepadButtonFlags.LeftShoulder, "l1");
+            AddIf(GamepadButtonFlags.RightShoulder, "r1");
+            AddIf(GamepadButtonFlags.LeftThumb, "l3");
+            AddIf(GamepadButtonFlags.RightThumb, "r3");
+            AddIf(GamepadButtonFlags.Start, "start");
+            AddIf(GamepadButtonFlags.Back, "select");
+            AddIf(GamepadButtonFlags.DPadUp, "dpad_up");
+            AddIf(GamepadButtonFlags.DPadDown, "dpad_down");
+            AddIf(GamepadButtonFlags.DPadLeft, "dpad_left");
+            AddIf(GamepadButtonFlags.DPadRight, "dpad_right");
+            // Note: XInput has no "Guide"/PS-button bit at all - that's an API limitation,
+            // not something DualKey can work around, so ps_button never fires here.
+
+            if (gp.LeftTrigger > 128) pad.Pressed.Add("l2");
+            if (gp.RightTrigger > 128) pad.Pressed.Add("r2");
+
+            return pad;
+        }
+
+        /// <summary>
+        /// Fallback path for controllers Windows exposes as a plain HID gamepad rather
+        /// than an XInput device - this is exactly how a DualShock 4 shows up out of the
+        /// box (no DS4Windows/ViGEm required). We prefer a Sony device (vendor id 0x054C)
+        /// if one is attached, otherwise fall back to whatever generic controller is plugged in.
+        /// </summary>
+        private PadState ReadDirectInputState()
+        {
+            EnsureDirectInputDevice();
+            if (directInputJoystick == null)
+                return new PadState { Connected = false };
+
+            try
+            {
+                directInputJoystick.Poll();
+                DInput.JoystickState state = directInputJoystick.GetCurrentState();
+
+                var pad = new PadState { Connected = true, Source = "DirectInput" };
+
+                // DirectInput's Y axis runs the opposite way to XInput's (pushing the
+                // stick up produces a *smaller* raw value, not a bigger one) - the minus
+                // sign below is what keeps "up" mapped to "up" instead of repeating the
+                // stick-direction bug we already fixed for XInput.
+                pad.LX = (state.X - 32768) / 32768f;
+                pad.LY = -(state.Y - 32768) / 32768f;
+                pad.RX = (state.Z - 32768) / 32768f;
+                pad.RY = -(state.RotationZ - 32768) / 32768f;
+
+                bool[] buttons = state.Buttons;
+                void AddIf(int index, string action)
+                {
+                    if (index < buttons.Length && buttons[index]) pad.Pressed.Add(action);
+                }
+                // Standard DualShock 4 HID gamepad button order on Windows.
+                AddIf(0, "square");
+                AddIf(1, "cross");
+                AddIf(2, "circle");
+                AddIf(3, "triangle");
+                AddIf(4, "l1");
+                AddIf(5, "r1");
+                AddIf(6, "l2");
+                AddIf(7, "r2");
+                AddIf(8, "select");   // Share
+                AddIf(9, "start");    // Options
+                AddIf(10, "l3");
+                AddIf(11, "r3");
+                AddIf(12, "ps_button");
+
+                int[] povs = state.PointOfViewControllers;
+                int pov = (povs != null && povs.Length > 0) ? povs[0] : -1;
+                if (pov >= 0)
+                {
+                    // D-pad reported as an 8-way hat switch, in hundredths of a degree.
+                    if (pov == 0 || pov == 4500 || pov == 31500) pad.Pressed.Add("dpad_up");
+                    if (pov == 9000 || pov == 4500 || pov == 13500) pad.Pressed.Add("dpad_right");
+                    if (pov == 18000 || pov == 13500 || pov == 22500) pad.Pressed.Add("dpad_down");
+                    if (pov == 27000 || pov == 22500 || pov == 31500) pad.Pressed.Add("dpad_left");
+                }
+
+                return pad;
+            }
+            catch
+            {
+                // Most likely the controller was unplugged - drop it so the next
+                // discovery pass can pick up whatever's connected now.
+                try { directInputJoystick.Unacquire(); } catch { /* already gone */ }
+                directInputJoystick = null;
+                return new PadState { Connected = false };
+            }
+        }
+
+        private void EnsureDirectInputDevice()
+        {
+            if (directInputJoystick != null) return;
+
+            // Only retry discovery roughly once a second rather than on every 16ms tick.
+            diDiscoveryCounter++;
+            if (diDiscoveryCounter < 60) return;
+            diDiscoveryCounter = 0;
+
+            try
+            {
+                if (directInput == null)
+                    directInput = new DInput.DirectInput();
+
+                var devices = directInput.GetDevices(DInput.DeviceClass.GameControl, DInput.DeviceEnumerationFlags.AttachedOnly);
+                if (devices.Count == 0) return;
+
+                DInput.DeviceInstance chosen = null;
+                foreach (var d in devices)
+                {
+                    byte[] guidBytes = d.ProductGuid.ToByteArray();
+                    int vendorId = guidBytes[0] | (guidBytes[1] << 8);
+                    if (vendorId == 0x054C) // Sony
+                    {
+                        chosen = d;
+                        break;
+                    }
+                }
+                if (chosen == null) chosen = devices[0]; // fall back to whatever's plugged in
+
+                var joystick = new DInput.Joystick(directInput, chosen.InstanceGuid);
+                foreach (var axis in joystick.GetObjects(DInput.DeviceObjectTypeFlags.Axis))
+                    joystick.GetObjectPropertiesById(axis.ObjectId).Range = new DInput.InputRange(-32768, 32767);
+
+                joystick.Properties.BufferSize = 128;
+                joystick.SetCooperativeLevel(this.Handle, DInput.CooperativeLevel.NonExclusive | DInput.CooperativeLevel.Background);
+                joystick.Acquire();
+
+                directInputJoystick = joystick;
+                Log("Controller connected via DirectInput: " + chosen.ProductName.Trim());
+            }
+            catch (Exception ex)
+            {
+                Log("DirectInput discovery failed: " + ex.Message);
+                directInputJoystick = null;
             }
         }
 
@@ -628,18 +787,6 @@ namespace DualKey
             if (value < -deadzone) { emulator.PressKey(negAction); emulator.ReleaseKey(posAction); }
             else if (value > deadzone) { emulator.PressKey(posAction); emulator.ReleaseKey(negAction); }
             else { emulator.ReleaseKey(negAction); emulator.ReleaseKey(posAction); }
-        }
-
-        private void EmulateTrigger(string action, bool pressed)
-        {
-            if (pressed) emulator.PressKey(action);
-            else emulator.ReleaseKey(action);
-        }
-
-        private void EmulateDpad(string action, bool pressed)
-        {
-            if (pressed) emulator.PressKey(action);
-            else emulator.ReleaseKey(action);
         }
 
         private string GetJsonData() =>
@@ -786,15 +933,20 @@ namespace DualKey
             emulator?.ReleaseAll();
             webServer?.Stop();
 
-<<<<<<< HEAD
-=======
             if (trayIcon != null)
             {
                 trayIcon.Visible = false;
                 trayIcon.Dispose();
             }
 
->>>>>>> 7c4fcbc (Changed MainForm.cs for new settings)
+            if (directInputJoystick != null)
+            {
+                try { directInputJoystick.Unacquire(); } catch { /* ignore */ }
+                directInputJoystick.Dispose();
+                directInputJoystick = null;
+            }
+            directInput?.Dispose();
+
             if (hider != null && hider.IsHidden)
             {
                 Log("Restoring hidden controller before exit...");
