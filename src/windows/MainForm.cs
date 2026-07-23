@@ -21,6 +21,7 @@ namespace DualKey
 
         // UI элементы
         private MenuStrip menuStrip;
+        private NotifyIcon trayIcon;
         private StatusStrip statusStrip;
         private ToolStripStatusLabel statusLabel;
         private ToolStripStatusLabel connectionLabel;
@@ -70,6 +71,27 @@ namespace DualKey
                 return "dualkey.log";
             }
         }
+<<<<<<< HEAD
+=======
+
+        private void ApplySavedGamepadBindings()
+        {
+            // The Edit Gamepad dialog remembers its imported layout + mappings across
+            // restarts (see GamepadLayoutStore) - reapply the key bindings here so they
+            // work again immediately, without the user having to reopen the dialog.
+            var saved = GamepadLayoutStore.TryLoad();
+            if (saved == null) return;
+
+            foreach (var row in saved.Rows)
+            {
+                if (row.Action == "(Unassigned)" || string.IsNullOrEmpty(row.Action)) continue;
+                emulator.UpdateBinding(row.Action, row.KeyCode);
+            }
+
+            for (int i = 1; i <= 4; i++)
+                playerBindings[i] = new Dictionary<string, int>(emulator.Bindings);
+        }
+>>>>>>> 7c4fcbc (Changed MainForm.cs for new settings)
 
         public MainForm()
         {
@@ -81,6 +103,8 @@ namespace DualKey
             {
                 playerBindings[i] = new Dictionary<string, int>(emulator.Bindings);
             }
+
+            ApplySavedGamepadBindings();
 
             Log("Application starting...");
 
@@ -282,6 +306,39 @@ namespace DualKey
             groupController.Controls.Add(btnHide);
             groupController.Controls.Add(btnWeb);
             this.Controls.Add(groupController);
+
+            // ---- system tray icon (minimize-to-tray) ----
+            var trayMenu = new ContextMenuStrip();
+            trayMenu.Items.Add("Open DualKey", null, (s, e) => RestoreFromTray());
+            trayMenu.Items.Add(new ToolStripSeparator());
+            trayMenu.Items.Add("Exit", null, (s, e) => Application.Exit());
+
+            trayIcon = new NotifyIcon
+            {
+                Text = "DualKey",
+                Icon = this.Icon ?? SystemIcons.Application,
+                ContextMenuStrip = trayMenu,
+                Visible = false
+            };
+            trayIcon.DoubleClick += (s, e) => RestoreFromTray();
+
+            this.Resize += (s, e) =>
+            {
+                if (this.WindowState == FormWindowState.Minimized)
+                {
+                    this.Hide();
+                    trayIcon.Visible = true;
+                    trayIcon.ShowBalloonTip(1500, "DualKey", "Still running in the background.", ToolTipIcon.Info);
+                }
+            };
+        }
+
+        private void RestoreFromTray()
+        {
+            this.Show();
+            this.WindowState = FormWindowState.Normal;
+            this.Activate();
+            trayIcon.Visible = false;
         }
 
         private void OnOpenLog(object sender, EventArgs e)
@@ -487,9 +544,9 @@ namespace DualKey
                 activeKeyCodes.Clear();
 
                 AddStickKeys("left_stick_left", "left_stick_right", leftX, dz);
-                AddStickKeys("left_stick_up", "left_stick_down", leftY, dz);
+                AddStickKeys("left_stick_down", "left_stick_up", leftY, dz);
                 AddStickKeys("right_stick_left", "right_stick_right", rightX, dz);
-                AddStickKeys("right_stick_up", "right_stick_down", rightY, dz);
+                AddStickKeys("right_stick_down", "right_stick_up", rightY, dz);
 
                 GamepadButtonFlags buttons = gamepad.Buttons;
                 var buttonMap = new (GamepadButtonFlags flag, string action)[]
@@ -529,9 +586,9 @@ namespace DualKey
                 if (emulator.Enabled)
                 {
                     ProcessStickEmulation("left_stick_left", "left_stick_right", leftX, dz);
-                    ProcessStickEmulation("left_stick_up", "left_stick_down", leftY, dz);
+                    ProcessStickEmulation("left_stick_down", "left_stick_up", leftY, dz);
                     ProcessStickEmulation("right_stick_left", "right_stick_right", rightX, dz);
-                    ProcessStickEmulation("right_stick_up", "right_stick_down", rightY, dz);
+                    ProcessStickEmulation("right_stick_down", "right_stick_up", rightY, dz);
 
                     foreach (var (flag, action) in buttonMap)
                     {
@@ -729,6 +786,15 @@ namespace DualKey
             emulator?.ReleaseAll();
             webServer?.Stop();
 
+<<<<<<< HEAD
+=======
+            if (trayIcon != null)
+            {
+                trayIcon.Visible = false;
+                trayIcon.Dispose();
+            }
+
+>>>>>>> 7c4fcbc (Changed MainForm.cs for new settings)
             if (hider != null && hider.IsHidden)
             {
                 Log("Restoring hidden controller before exit...");
