@@ -20,7 +20,7 @@ Transform your DualShock 3 controller into a keyboard. Test inputs, bind buttons
 
 - Windows 10/11 (64-bit)
 - .NET 8.0 SDK (https://dotnet.microsoft.com/download/dotnet/8.0)
-- DualShock 3 controller (USB or Bluetooth)
+- DualShock 3/4 controller (USB or Bluetooth)
 
 ### Build and Run
 
@@ -34,7 +34,7 @@ After launching:
 
 ### Testing the Controller
 
-1. Connect your DualShock 3
+1. Connect your Controller
 2. Launch DualKey
 3. Move the sticks to see visualization
 4. Press buttons to see their state
